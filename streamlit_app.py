@@ -80,39 +80,38 @@ def get_rag_chain(vector_store):
 # 3. 知识库构建函数
 # ==========================================
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def setup_knowledge_base():
-    """加载文档、切分、向量化并存储到 FAISS"""
-    with st.spinner("正在加载和处理亚马逊运营知识库..."):
-        
-        # 1. 文档加载
-        docs = []
-        for path in DOC_PATHS:
-            try:
-                # 使用 UnstructuredFileLoader 处理 Word 文档
-                loader = UnstructuredFileLoader(path, mode="elements")
-                docs.extend(loader.load())
-            except Exception as e:
-                st.error(f"加载文件 {path} 失败: {e}. 请检查文件路径和依赖是否安装完整 (如 'unstructured').")
-                return None
+    """加载文档、切分、向量化并存储到 FAISS（延迟加载）"""
+    # 1. 文档加载
+    docs = []
+    for path in DOC_PATHS:
+        try:
+            # 使用 UnstructuredFileLoader 处理 Word 文档
+            loader = UnstructuredFileLoader(path, mode="elements")
+            docs.extend(loader.load())
+        except Exception as e:
+            st.error(f"加载文件 {path} 失败: {e}. 请检查文件路径和依赖是否安装完整 (如 'unstructured').")
+            return None
 
-        # 2. 文档切分
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=CHUNK_SIZE, 
-            chunk_overlap=CHUNK_OVERLAP, 
-            separators=["\n\n", "\n", " ", ""]
-        )
-        splits = text_splitter.split_documents(docs)
-        
-        # 3. 向量化模型
-        embeddings = HuggingFaceBgeEmbeddings(
-            model_name=EMBEDDING_MODEL_NAME
-        )
-        
-        # 4. 向量存储
-        vector_store = FAISS.from_documents(splits, embeddings)
-        st.success(f"知识库加载完成！共计 {len(splits)} 个知识片段。")
-        return vector_store
+    # 2. 文档切分
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE, 
+        chunk_overlap=CHUNK_OVERLAP, 
+        separators=["\n\n", "\n", " ", ""]
+    )
+    splits = text_splitter.split_documents(docs)
+    
+    # 3. 向量化模型（设置不显示下载进度）
+    embeddings = HuggingFaceBgeEmbeddings(
+        model_name=EMBEDDING_MODEL_NAME,
+        model_kwargs={'device': 'cpu'},
+        encode_kwargs={'normalize_embeddings': True}
+    )
+    
+    # 4. 向量存储
+    vector_store = FAISS.from_documents(splits, embeddings)
+    return vector_store
 
 # ==========================================
 # 4. Streamlit UI 界面 (保持不变)
@@ -122,22 +121,19 @@ def main():
     st.title("Amazon 运营标准化 AI 导师 (RAG Pro)")
     st.markdown("""
     **💡 核心信念：** 将初级运营的操作标准化，快速达到高级运营水平。
-    **✅ 技术栈：** Qwen-Max (LLM) + BGE Re-Ranker (K=10 召回, K=5 精排)
+    **✅ 技术栈：** Qwen-Max (LLM) + BGE-Small-ZH (Embedding) + FAISS (向量检索)
     """)
 
-    # 初始化知识库
-    vector_store = setup_knowledge_base()
-    if vector_store is None:
-        return
-    
-    # 初始化 RAG Chain
-    rag_chain = get_rag_chain(vector_store)
-
-    # 初始化聊天记录
+    # 初始化聊天记录（不加载模型）
     if "messages" not in st.session_state:
         st.session_state.messages = [
             AIMessage(content="您好，我是您的亚马逊运营经理 AI 导师。请问您想了解哪个运营模块的【标准操作流程（SOP）】？")
         ]
+    
+    # 初始化知识库状态标记
+    if "kb_loaded" not in st.session_state:
+        st.session_state.kb_loaded = False
+        st.session_state.vector_store = None
         
     # 显示历史聊天记录
     for message in st.session_state.messages:
@@ -146,6 +142,23 @@ def main():
 
     # 聊天输入
     if prompt := st.chat_input("输入你的亚马逊运营问题..."):
+        # 1. 用户输入
+        st.session_state.messages.append(HumanMessage(content=prompt))
+        with st.chat_message("human"):
+            st.markdown(prompt)
+
+        # 2. 延迟加载知识库（首次提问时才加载）
+        if not st.session_state.kb_loaded:
+            with st.spinner("🔄 首次使用，正在加载知识库和AI模型（约需1-2分钟）..."):
+                st.session_state.vector_store = setup_knowledge_base()
+                if st.session_state.vector_store is None:
+                    st.error("知识库加载失败，请检查文件是否存在。")
+                    return
+                st.session_state.kb_loaded = True
+                st.success("✅ 知识库加载完成！")
+        
+        # 初始化 RAG Chain
+        rag_chain = get_rag_chain(st.session_state.vector_store)
         # 1. 用户输入
         st.session_state.messages.append(HumanMessage(content=prompt))
         with st.chat_message("human"):

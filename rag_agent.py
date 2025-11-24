@@ -16,7 +16,7 @@ from typing import List, Dict
 # ==========================================
 # 1. 配置与初始化 (务必设置你的 API Key)
 # ==========================================
-st.set_page_config(page_title="Amazon 运营经理 AI 导师", layout="wide")
+st.set_page_config(page_title="Amazon 运营知识助手", layout="wide")
 
 # ⚠️ 注意：在 Streamlit Cloud 中使用 Secrets 来存储 API Key
 # 在本地测试时，可以直接设置；在云端应该使用 st.secrets
@@ -119,7 +119,7 @@ def setup_knowledge_base():
 # ==========================================
 
 def main():
-    st.title("Amazon 运营标准化 AI 导师 (RAG Pro)")
+    st.title("Amazon 运营知识助手 ")
     st.markdown("""
     **💡 核心信念：** 将初级运营的操作标准化，快速达到高级运营水平。
     **✅ 技术栈：** Qwen-Max (LLM) + BGE Re-Ranker (K=10 召回, K=5 精排)

@@ -185,30 +185,30 @@ def main():
                     
                     # 更新状态
                     status.update(label="SOP 构造完成！", state="complete", expanded=False)
-                    
-                    # 格式化输出答案
-                    st.markdown(answer)
+                
+                # 格式化输出答案（在 status 外面）
+                st.markdown(answer)
 
-                    # 3. 上下文可视化 - 展示精排后的文档
-                    with st.expander(f"🔍 查看模型使用的知识片段 (Re-Ranked K={rerank_k})"):
-                        st.write("---")
-                        st.markdown(f"**模型从 {len(retrieved_docs)} 个检索结果中精选了 {len(top_docs)} 个最相关的知识片段。**")
-                        for i, doc in enumerate(top_docs):
-                            # 提取知识片段和来源
-                            source_name = os.path.basename(doc.metadata.get('source', '未知文件'))
-                            content_snippet = doc.page_content[:300]
-                            if len(doc.page_content) > 300:
-                                content_snippet += "..."
-                            
-                            st.text_area(
-                                f"片段 {i+1} (相关性排名第{i+1}) - 来源: {source_name}",
-                                content_snippet,
-                                height=150,
-                                disabled=True
-                            )
+                # 3. 上下文可视化 - 展示精排后的文档（在 status 外面）
+                with st.expander(f"🔍 查看模型使用的知识片段 (Re-Ranked K={rerank_k})"):
+                    st.write("---")
+                    st.markdown(f"**模型从 {len(retrieved_docs)} 个检索结果中精选了 {len(top_docs)} 个最相关的知识片段。**")
+                    for i, doc in enumerate(top_docs):
+                        # 提取知识片段和来源
+                        source_name = os.path.basename(doc.metadata.get('source', '未知文件'))
+                        content_snippet = doc.page_content[:300]
+                        if len(doc.page_content) > 300:
+                            content_snippet += "..."
+                        
+                        st.text_area(
+                            f"片段 {i+1} (相关性排名第{i+1}) - 来源: {source_name}",
+                            content_snippet,
+                            height=150,
+                            disabled=True
+                        )
 
-                    # 4. 添加到会话历史
-                    st.session_state.messages.append(AIMessage(content=answer))
+                # 4. 添加到会话历史
+                st.session_state.messages.append(AIMessage(content=answer))
 
                 except Exception as e:
                     st.error(f"RAG 运行出错：{e}")

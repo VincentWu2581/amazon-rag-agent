@@ -153,11 +153,10 @@ def main():
 
         # 2. AI 回答
         with st.chat_message("ai"):
-            # 使用 st.status 展示 CoT 流程，增强产品体验
-            with st.status("🤖 AI 导师正在检索知识并构建 SOP...", expanded=True) as status:
-                
-                # 调用 RAG Chain
-                try:
+            # 调用 RAG Chain
+            try:
+                # 使用 st.status 展示 CoT 流程，增强产品体验
+                with st.status("🤖 AI 导师正在检索知识并构建 SOP...", expanded=True) as status:
                     # 使用检索和生成流程
                     rag_components = rag_chain
                     retriever = rag_components["retriever"]
@@ -210,11 +209,11 @@ def main():
                 # 4. 添加到会话历史
                 st.session_state.messages.append(AIMessage(content=answer))
 
-                except Exception as e:
-                    st.error(f"RAG 运行出错：{e}")
-                    import traceback
-                    st.error(traceback.format_exc())
-                    st.session_state.messages.append(AIMessage(content="抱歉，系统在处理您的请求时发生错误，请稍后再试。"))
+            except Exception as e:
+                st.error(f"RAG 运行出错：{e}")
+                import traceback
+                st.error(traceback.format_exc())
+                st.session_state.messages.append(AIMessage(content="抱歉，系统在处理您的请求时发生错误，请稍后再试。"))
 
 
 if __name__ == "__main__":
